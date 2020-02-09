@@ -41,10 +41,11 @@ getSeedIPAddresses() {
 createNode() {
   local clusterName=$1
   local nodeName=$2
-  local nodeAddress=$3
-  local rackName=$4
-  local clusterSeeds=$5
-  local exposePort=$6
+  local nodeMemory=$3
+  local nodeAddress=$4
+  local rackName=$5
+  local clusterSeeds=$6
+  local exposePort=$7
 
   local port=""
   if [[ ${exposePort} == true ]]; then
@@ -52,7 +53,7 @@ createNode() {
   fi
 
   docker run \
-    --memory=4g \
+    --memory=${nodeMemory} \
     --name ${nodeName} \
     --net ${clusterName} \
     --ip ${nodeAddress} \
@@ -86,6 +87,7 @@ function writeConfig() {
 
   echo "CLUSTER_NAME=$(readInput "What is the Cluster name?" "cassandra_cluster")" > ${scratch}
   echo "CLUSTER_SIZE=$(readInput "What should be the cluster size (1/2/4)?" 4)" >> ${scratch}
+  echo "NODE_MEMORY=$(readInput "How much memory should be allocated per node (1g/2g/4g)?" 4g)" >> ${scratch}
   echo "NETWORK_SUBNET_PART=$(readInput "What is the network prefix?" "192.168.100")" >> ${scratch}
   cp ${scratch} ${envFile}
 }
@@ -117,6 +119,7 @@ function bootStrap() {
     createNode \
       ${CLUSTER_NAME} \
       "${CLUSTER_NAME}_${index}" \
+      ${NODE_MEMORY} \
       ${networkAddresses[${index}]} \
       "rc-${index}" \
       "${clusterSeeds}" \
@@ -128,6 +131,7 @@ PROJECT_PATH=$(dirname "$0")
 ENV_CONFIG_FILE="${PROJECT_PATH}/.env"
 CLUSTER_NAME=$(loadConfig CLUSTER_NAME ${ENV_CONFIG_FILE})
 CLUSTER_SIZE=$(loadConfig CLUSTER_SIZE ${ENV_CONFIG_FILE})
+NODE_MEMORY=$(loadConfig NODE_MEMORY ${ENV_CONFIG_FILE})
 NETWORK_SUBNET_PART=$(loadConfig NETWORK_SUBNET_PART ${ENV_CONFIG_FILE})
 
 bootStrap
