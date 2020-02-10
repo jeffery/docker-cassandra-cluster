@@ -6,7 +6,6 @@ Dockerized Cassandra cluster, so you can play with it ;-)
 
 * docker (duh)
 * ipcalc
-* bc
 
 # Usage
 
