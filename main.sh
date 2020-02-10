@@ -152,7 +152,7 @@ function destroyCluster() {
 }
 
 function clusterStatus() {
-  echo "Displaying Cluster tokens"
+  echo "Displaying cassandra node status"
   docker exec -ti "${CLUSTER_NAME}_0" nodetool status || echo "Could not detect status of cluster" 1>&2
 }
 
