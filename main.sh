@@ -7,6 +7,7 @@ createNetwork() {
   local networkSubnetPart=$2
 
   docker network rm ${networkName} 2> /dev/null || true
+  echo "Creating cluster network"
   docker network create --subnet="${networkSubnetPart}.0/24" ${networkName}
 }
 
