@@ -4,19 +4,41 @@ set -e
 
 function createNetwork() {
   local networkName=$1
-  local networkSubnetPart=$2
+  local networkCIDR=$2
 
   docker network rm ${networkName} 2> /dev/null || true
   echo "Creating cluster network"
-  docker network create --subnet="${networkSubnetPart}.0/24" ${networkName}
+  docker network create --subnet=${networkCIDR} ${networkName}
+}
+
+function getNextIPAddress(){
+  local ipAddress="${1}"
+
+  ipAddressHEX=$(printf '%.2X%.2X%.2X%.2X\n' $(echo ${ipAddress} | sed -e 's/\./ /g'))
+  nextIPAddressHEX=$(printf %.8X $(echo $(( $(echo "0x${ipAddressHEX}") + 1 ))))
+  nextIPAddress=$(printf '%d.%d.%d.%d\n' $(echo ${nextIPAddressHEX} | sed 's/../0x& /g'))
+  echo "$nextIPAddress"
+}
+
+function getIPList() {
+  local ipAddress="${1}"
+  local ipCount="${2}"
+  for i in $(seq 1 ${ipCount}); do
+    ipAddress=$(getNextIPAddress ${ipAddress})
+    echo ${ipAddress}
+  done
+}
+
+function getFirstIPAddress() {
+  local networkCIDR="${1}"
+  echo $(ipcalc ${networkCIDR} | grep "HostMin" | awk '{ print $2 }')
 }
 
 function getNetworkAddresses() {
-  local clusterSize=$1
-  local networkSubnetPart=$2
-  local networkStartIP=$3
+  local ipCount=$1
+  local networkCIDR=$2
 
-  echo $(seq -f "${networkSubnetPart}.%g" ${networkStartIP} $(echo "${networkStartIP}+${clusterSize}-1" | bc))
+  getIPList $(getFirstIPAddress ${networkCIDR}) ${ipCount}
 }
 
 function joinBy {
@@ -90,7 +112,7 @@ function writeConfig() {
   echo "CLUSTER_NAME=$(readInput "What is the Cluster name?" "cassandra_cluster")" > ${scratch}
   echo "CLUSTER_SIZE=$(readInput "What should be the cluster size (1/2/4)?" 4)" >> ${scratch}
   echo "NODE_MEMORY=$(readInput "How much memory should be allocated per node (1g/2g/4g)?" 4g)" >> ${scratch}
-  echo "NETWORK_SUBNET_PART=$(readInput "What is the network prefix?" "192.168.100")" >> ${scratch}
+  echo "NETWORK_CIDR=$(readInput "What is the network CIDR?" "192.168.100.0/27")" >> ${scratch}
   cp ${scratch} ${envFile}
 }
 
@@ -106,21 +128,22 @@ function checkConfig() {
 function loadConfig() {
   local varName=$1
   local envFile=$2
-  checkConfig ${envFile}
 
   grep ${varName} ${envFile} | awk -F '=' '{ print $2 }'
 }
 
 PROJECT_PATH=$(dirname "$0")
 ENV_CONFIG_FILE="${PROJECT_PATH}/.env"
+checkConfig ${ENV_CONFIG_FILE}
+
 CLUSTER_NAME=$(loadConfig CLUSTER_NAME ${ENV_CONFIG_FILE})
 CLUSTER_SIZE=$(loadConfig CLUSTER_SIZE ${ENV_CONFIG_FILE})
 NODE_MEMORY=$(loadConfig NODE_MEMORY ${ENV_CONFIG_FILE})
-NETWORK_SUBNET_PART=$(loadConfig NETWORK_SUBNET_PART ${ENV_CONFIG_FILE})
+NETWORK_CIDR=$(loadConfig NETWORK_CIDR ${ENV_CONFIG_FILE})
 
 function bootStrap() {
-  createNetwork ${CLUSTER_NAME} ${NETWORK_SUBNET_PART}
-  local networkAddresses=($(getNetworkAddresses ${CLUSTER_SIZE} ${NETWORK_SUBNET_PART} 2))
+  createNetwork ${CLUSTER_NAME} ${NETWORK_CIDR}
+  local networkAddresses=($(getNetworkAddresses ${CLUSTER_SIZE} ${NETWORK_CIDR}))
   local clusterSeeds=$(getSeedIPAddresses ${networkAddresses[@]})
 
   for index in ${!networkAddresses[@]};
