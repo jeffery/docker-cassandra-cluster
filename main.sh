@@ -53,6 +53,7 @@ createNode() {
     local port="-p 9042:9042"
   fi
 
+  echo "Creating node ${nodeName} in cluster"
   docker run \
     --memory=${nodeMemory} \
     --name ${nodeName} \
