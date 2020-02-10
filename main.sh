@@ -2,7 +2,7 @@
 
 set -e
 
-createNetwork() {
+function createNetwork() {
   local networkName=$1
   local networkSubnetPart=$2
 
@@ -11,7 +11,7 @@ createNetwork() {
   docker network create --subnet="${networkSubnetPart}.0/24" ${networkName}
 }
 
-getNetworkAddresses() {
+function getNetworkAddresses() {
   local clusterSize=$1
   local networkSubnetPart=$2
   local networkStartIP=$3
@@ -25,7 +25,7 @@ function joinBy {
   echo "$*"
 }
 
-getSeedIPAddresses() {
+function getSeedIPAddresses() {
   local networkAddresses=("$@")
   declare -a clusterSeeds
 
@@ -39,7 +39,7 @@ getSeedIPAddresses() {
   echo $(joinBy , ${clusterSeeds[@]})
 }
 
-createNode() {
+function createNode() {
   local clusterName=$1
   local nodeName=$2
   local nodeMemory=$3
