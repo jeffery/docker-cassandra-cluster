@@ -132,6 +132,13 @@ function loadConfig() {
   grep ${varName} ${envFile} | awk -F '=' '{ print $2 }'
 }
 
+function pauseBootstrap() {
+  local waitTime=${1}
+
+  echo "Pausing bootstrap for ${waitTime} seconds"
+  sleep ${waitTime}
+}
+
 PROJECT_PATH=$(dirname "$0")
 ENV_CONFIG_FILE="${PROJECT_PATH}/.env"
 checkConfig ${ENV_CONFIG_FILE}
@@ -145,6 +152,7 @@ function bootStrap() {
   createNetwork ${CLUSTER_NAME} ${NETWORK_CIDR}
   local networkAddresses=($(getNetworkAddresses ${CLUSTER_SIZE} ${NETWORK_CIDR}))
   local clusterSeeds=$(getSeedIPAddresses ${networkAddresses[@]})
+  local bootstrapDelay=120
 
   for index in ${!networkAddresses[@]};
   do
@@ -156,7 +164,11 @@ function bootStrap() {
       "rc-${index}" \
       "${clusterSeeds}" \
       $(((${index})) && echo "false" || echo "true")
+
+    pauseBootstrap ${bootstrapDelay}
   done
+
+  clusterStatus
 }
 
 function startCluster() {
